@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Build Your Own Adaptive Leader | MGMT 405</title>
+  <style>
+    :root {
+      --navy: #0b355b;
+      --navy-dark: #061c34;
+      --navy-mid: #133f66;
+      --navy-card: #16476e;
+      --gold: #ffec6d;
+      --white: #f8fbff;
+      --muted: #bfd2e5;
+      --edge: rgba(204, 225, 246, .23);
+      --mint: #daf0e4;
+      --sky: #dceefa;
+      --butter: #fff0b6;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; color: var(--white); background: var(--navy-dark); font-family: Arial, Helvetica, sans-serif; }
+    .page { max-width: 1620px; margin: auto; padding: 24px clamp(15px,2.7vw,44px) 18px; }
+    .masthead { display: flex; gap: 16px; justify-content: space-between; align-items: center; margin-bottom: 17px; }
+    .eyebrow { color: var(--gold); font-weight: bold; text-transform: uppercase; font-size: 12px; letter-spacing: .13em; margin-bottom: 6px; }
+    h1 { font-family: Georgia, 'Times New Roman', serif; font-weight: normal; margin: 0; font-size: clamp(27px,2.75vw,44px); line-height: 1.12; }
+    .subtitle { margin: 8px 0 0; color: var(--muted); font-size: clamp(13px,1.2vw,17px); }
+    .controls { display: flex; gap: 8px; flex-shrink: 0; }
+    .control { appearance: none; color: var(--white); background: var(--navy-mid); border: 1px solid #6689aa; border-radius: 9px; padding: 11px 16px; font-size: 14px; font-weight: 700; cursor: pointer; }
+    .control:hover, .control:focus-visible { background: #26567c; outline: 2px solid var(--gold); outline-offset: 2px; }
+    .activity { display: grid; grid-template-columns: minmax(0,1fr) 322px; gap: 18px; align-items: stretch; }
+    .board, .bank { border-radius: 17px; border: 1px solid var(--edge); box-shadow: 0 12px 35px rgba(0,0,0,.17); }
+    .board { min-width:0; background: linear-gradient(165deg, #0f3f66, #092e51 80%); padding: 13px 15px 10px; }
+    .board-title { display: flex; justify-content: space-between; align-items: baseline; border-bottom: 2px solid var(--gold); gap: 8px; padding: 2px 5px 11px; }
+    .board-title strong { font-family: Georgia, 'Times New Roman', serif; font-size: 22px; font-weight: normal; }
+    .board-title span { color: var(--muted); font-size: 12px; }
+    .diagram { height: 575px; position: relative; margin-top: 8px; }
+    .diagram-lines { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; opacity:.65; }
+    .person { width: 30%; max-width: 260px; height: 380px; position: absolute; top: 98px; left: 50%; transform: translateX(-50%); display:flex; justify-content:center; align-items:center; pointer-events:none; }
+    .person svg { height: 100%; width:100%; filter: drop-shadow(0 7px 15px rgba(0,0,0,.24)); }
+    .zone { position: absolute; width: 32%; min-height: 153px; padding: 10px 11px; background: rgba(22, 71, 110, .84); border: 1px solid rgba(198,224,246,.28); border-radius: 13px; transition: border-color .15s ease, background-color .15s ease; }
+    .zone[data-zone="mindset"] { top: 7px; left: 1%; }
+    .zone[data-zone="awareness"] { top: 7px; right: 1%; }
+    .zone[data-zone="values"] { top: 207px; left: 1%; }
+    .zone[data-zone="actions"] { top: 207px; right: 1%; }
+    .zone[data-zone="foundation"] { bottom: 2px; left: 1%; }
+    .zone[data-zone="purpose"] { bottom: 2px; right: 1%; }
+    .zone h2 { font-family: Georgia, 'Times New Roman', serif; font-size: 19px; font-weight: normal; margin: 0 0 3px; }
+    .zone .question { font-size: 12px; color: #c8ddf0; margin: 0 0 9px; }
+    .zone .card-container { min-height: 76px; display: flex; align-content: flex-start; align-items: flex-start; gap: 5px; flex-wrap: wrap; border: 1.5px dashed rgba(255,236,109,.62); border-radius: 9px; padding: 6px; }
+    .zone .card-container:empty::before { content: "Drop a trait here"; display: block; color: #93b6d4; font-size: 12px; padding: 8px 2px; }
+    .zone.is-over, .bank.is-over { border-color: var(--gold); background: #205780; }
+    .zone.is-selected-target { outline: 2px dashed var(--gold); outline-offset: 2px; cursor: pointer; }
+    .bank { background: var(--navy-mid); padding: 17px 16px; display: flex; flex-direction: column; min-height: 625px; }
+    .bank h2 { margin: 0 0 8px; font-family: Georgia, 'Times New Roman', serif; font-weight: normal; font-size: 24px; }
+    .bank-instructions { color: var(--muted); margin: 0 0 16px; font-size: 13px; line-height: 1.48; }
+    .bank-drop { border: 1.5px dashed rgba(255,236,109,.43); border-radius: 11px; padding: 10px; min-height: 396px; display: grid; align-content: start; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 9px; }
+    .bank-drop.is-selected-target { border-color: var(--gold); cursor:pointer; }
+    .trait { appearance: none; color: #173854; border: 1px solid rgba(255,255,255,.8); min-width:0; padding: 8px 7px; min-height: 31px; border-radius: 8px; font-size: clamp(11px, .84vw, 14px); font-weight: 700; cursor: grab; overflow-wrap: anywhere; text-align: center; box-shadow: 0 2px 0 rgba(5,24,42,.22); user-select: none; }
+    .trait:active { cursor: grabbing; }
+    .trait:focus-visible { outline: 3px solid var(--gold); outline-offset:2px; }
+    .trait[data-color="0"] { background: var(--butter); }
+    .trait[data-color="1"] { background: var(--sky); }
+    .trait[data-color="2"] { background: var(--mint); }
+    .trait.selected { outline: 3px solid var(--gold); outline-offset: 2px; transform: translateY(-1px); }
+    .trait.is-dragging { opacity: .45; }
+    .zone .trait { font-size: 11px; padding: 6px; }
+    .bank-help { margin: auto 0 0; padding-top: 17px; font-size: 12px; color: var(--muted); line-height: 1.55; }
+    .bank-help strong { color: #fff8c0; }
+    .foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin: 14px 2px 0; }
+    .takeaway { color: #ffe994; font-size: 14px; font-weight: bold; }
+    .progress { color: #d5e5f2; font-size: 12px; white-space: nowrap; }
+    .status { margin-top: 9px; min-height: 20px; font-size: 13px; color: #d8eaf8; }
+    .howto { margin: 14px 1px 0; font-size: 12px; color: #aac3d9; line-height: 1.5; }
+    @media (max-width: 1080px) {
+      .activity { grid-template-columns: 1fr; }
+      .bank { min-height: auto; }
+      .bank-drop { min-height: auto; grid-template-columns: repeat(3,minmax(0,1fr)); }
+      .diagram { height: 575px; }
+      .trait { font-size: 13px; }
+    }
+    @media (max-width: 640px) {
+      .masthead { align-items:flex-start; flex-direction:column; }
+      .diagram { height:auto; display:grid; grid-template-columns: 1fr 1fr; gap: 9px; padding-top: 190px; }
+      .diagram-lines { display: none; }
+      .person { width: 100px; height:175px; top: 8px; }
+      .zone { position:relative !important; top:auto !important; bottom:auto !important; left:auto !important; right:auto !important; width:auto; min-height:152px; }
+      .zone h2 {font-size:16px;}
+      .bank-drop { grid-template-columns: repeat(2,minmax(0,1fr)); }
+      .board-title {flex-wrap:wrap;}
+      .foot { align-items:flex-start; flex-direction:column; }
+    }
+    @media (prefers-reduced-motion: reduce) { * { transition:none !important; } }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <header class="masthead">
+      <div>
+        <div class="eyebrow">MGMT 405 · See Yourself as a System</div>
+        <h1>Build Your Own Adaptive Leader!</h1>
+        <p class="subtitle">As a class, choose traits, decide where they belong, and explain why.</p>
+      </div>
+      <div class="controls">
+        <button class="control" id="reset" type="button">Reset board</button>
+        <button class="control" id="fullscreen" type="button">Full screen</button>
+      </div>
+    </header>
+
+    <main class="activity">
+      <section class="board" aria-label="Adaptive leader diagram">
+        <div class="board-title"><strong>What makes an adaptive leader?</strong><span>Six ways to think about leadership</span></div>
+        <div class="diagram">
+          <svg class="diagram-lines" viewBox="0 0 1000 575" preserveAspectRatio="none" aria-hidden="true">
+            <g stroke="#ffed83" stroke-dasharray="7 10" stroke-width="1.6" fill="none" opacity=".55">
+              <path d="M330 83 Q420 64 478 104"/><path d="M670 83 Q579 64 522 104"/>
+              <path d="M330 276 L458 276"/><path d="M670 276 L542 276"/>
+              <path d="M330 487 Q418 506 477 453"/><path d="M670 487 Q578 506 522 453"/>
+            </g>
+          </svg>
+          <div class="person">
+            <svg viewBox="0 0 220 430" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Stick figure representing an adaptive leader">
+              <g stroke="#f8fbff" stroke-width="7" stroke-linecap="round" stroke-linejoin="round" fill="none">
+                <circle cx="110" cy="68" r="41" fill="#e7f3fb" stroke="#ffec6d" stroke-width="3"/>
+                <path d="M110 111 L110 279"/>
+                <path d="M110 173 L30 239"/><path d="M110 173 L190 239"/>
+                <path d="M110 279 L40 392"/><path d="M110 279 L180 392"/>
+              </g>
+              <g fill="#123b5e"><circle cx="95" cy="61" r="4"/><circle cx="126" cy="61" r="4"/></g>
+              <path d="M95 78 Q110 94 125 78" fill="none" stroke="#123b5e" stroke-width="3" stroke-linecap="round"/>
+              <path d="M110 183 C92 163 75 181 92 203 L110 220 L128 203 C145 181 128 163 110 183Z" fill="#ffec6d"/>
+            </svg>
+          </div>
+          <article class="zone" id="zone-mindset" data-zone="mindset" tabindex="0" aria-label="Mindset: How do they think?">
+            <h2>Mindset</h2><p class="question">How do they think?</p><div class="card-container" id="cards-mindset"></div>
+          </article>
+          <article class="zone" id="zone-awareness" data-zone="awareness" tabindex="0" aria-label="Awareness: What do they notice?">
+            <h2>Awareness</h2><p class="question">What do they notice?</p><div class="card-container" id="cards-awareness"></div>
+          </article>
+          <article class="zone" id="zone-values" data-zone="values" tabindex="0" aria-label="Values: What matters to them?">
+            <h2>Values</h2><p class="question">What matters to them?</p><div class="card-container" id="cards-values"></div>
+          </article>
+          <article class="zone" id="zone-actions" data-zone="actions" tabindex="0" aria-label="Actions: How do they lead?">
+            <h2>Actions</h2><p class="question">How do they lead?</p><div class="card-container" id="cards-actions"></div>
+          </article>
+          <article class="zone" id="zone-foundation" data-zone="foundation" tabindex="0" aria-label="Foundation: What grounds them?">
+            <h2>Foundation</h2><p class="question">What grounds them?</p><div class="card-container" id="cards-foundation"></div>
+          </article>
+          <article class="zone" id="zone-purpose" data-zone="purpose" tabindex="0" aria-label="Purpose: What drives them?">
+            <h2>Purpose</h2><p class="question">What drives them?</p><div class="card-container" id="cards-purpose"></div>
+          </article>
+        </div>
+      </section>
+      <aside class="bank" id="bankArea" aria-label="Characteristic bank">
+        <h2>Characteristic Bank</h2>
+        <p class="bank-instructions">Drag a card to any category. Or click a card, then click where it belongs. There may be more than one good answer!</p>
+        <div class="bank-drop" id="bankCards" aria-label="Available characteristics"></div>
+        <p class="bank-help"><strong>Discussion prompt:</strong> Why did you choose that characteristic? Could it fit somewhere else, too?<br><br>To move a word back, drag it into this bank (or select it and click the bank).</p>
+      </aside>
+    </main>
+    <div class="foot">
+      <span class="takeaway">A strength can become a limitation if it's the only approach we use.</span>
+      <span class="progress" id="progress">0 traits placed · 0 of 6 areas filled</span>
+    </div>
+    <div class="status" id="status" role="status" aria-live="polite">Choose a characteristic to begin.</div>
+    <p class="howto">Facilitator tip: Invite the class to choose one or two characteristics per area. Ask them to explain how each connects to the six chapters of <em>The Practice of Adaptive Leadership</em>. This is a group activity framework, not a six-part model from the authors.</p>
+  </div>
+  <script>
+    // EDIT HERE: Change, add, or remove characteristics in this list.
+    const TRAITS = [
+      'Curious', 'Self-aware', 'Accountable', 'Adaptable',
+      'Resilient', 'Purpose-driven', 'Open-minded', 'Empathetic',
+      'Ethical', 'Collaborative', 'Honest', 'Reflective',
+      'Patient', 'Courageous', 'Good listener', 'Flexible',
+      'Responsible', 'Willing to learn'
+    ];
+    const CATEGORIES = ['mindset', 'awareness', 'values', 'actions', 'foundation', 'purpose'];
+    const STORAGE_KEY = 'mgmt405-adaptive-leader-v1';
+    const state = {};
+    TRAITS.forEach((label, index) => { state['trait-' + index] = 'bank'; });
+    try {
+      const previous = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      for (const id of Object.keys(state)) {
+        if (previous[id] && (previous[id] === 'bank' || CATEGORIES.includes(previous[id]))) {
+          state[id] = previous[id];
+        }
+      }
+    } catch (error) { /* Storage may be unavailable when opened as a local file. */ }
+
+    let selectedId = null;
+    let draggingId = null;
+    const statusEl = document.getElementById('status');
+    const progressEl = document.getElementById('progress');
+    const bankArea = document.getElementById('bankArea');
+    const bankCards = document.getElementById('bankCards');
+
+    function save() {
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
+      catch (error) { /* The activity still works without persistence. */ }
+    }
+
+    function moveCard(id, destination) {
+      if (!(id in state) || (destination !== 'bank' && !CATEGORIES.includes(destination))) return;
+      state[id] = destination;
+      selectedId = null;
+      draggingId = null;
+      save();
+      render();
+      const word = TRAITS[Number(id.split('-')[1])];
+      statusEl.textContent = destination === 'bank' ? `${word} returned to the word bank.` : `${word} placed in ${destination}. Ask the class: Why does it fit?`;
+    }
+
+    function makeCard(label, index) {
+      const id = 'trait-' + index;
+      const card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'trait' + (selectedId === id ? ' selected' : '');
+      card.dataset.color = String(index % 3);
+      card.textContent = label;
+      card.draggable = true;
+      card.setAttribute('aria-pressed', String(selectedId === id));
+      card.title = 'Drag this card, or click it and then click a category';
+      card.addEventListener('click', (event) => {
+        event.stopPropagation();
+        selectedId = selectedId === id ? null : id;
+        render();
+        statusEl.textContent = selectedId ? `${label} selected. Now click a category (or the bank).` : 'Selection cleared.';
+      });
+      card.addEventListener('dragstart', (event) => {
+        draggingId = id;
+        selectedId = null;
+        event.dataTransfer.setData('text/plain', id);
+        event.dataTransfer.effectAllowed = 'move';
+        requestAnimationFrame(() => card.classList.add('is-dragging'));
+      });
+      card.addEventListener('dragend', () => {
+        draggingId = null;
+        document.querySelectorAll('.is-over').forEach(el => el.classList.remove('is-over'));
+        card.classList.remove('is-dragging');
+      });
+      return card;
+    }
+
+    function render() {
+      bankCards.replaceChildren();
+      for (const cat of CATEGORIES) {
+        document.getElementById('cards-' + cat).replaceChildren();
+        document.getElementById('zone-' + cat).classList.toggle('is-selected-target', Boolean(selectedId));
+      }
+      bankCards.classList.toggle('is-selected-target', Boolean(selectedId));
+      TRAITS.forEach((label, index) => {
+        const id = 'trait-' + index;
+        const target = state[id] === 'bank' ? bankCards : document.getElementById('cards-' + state[id]);
+        target.appendChild(makeCard(label, index));
+      });
+      const placed = Object.values(state).filter(location => location !== 'bank');
+      const filled = new Set(placed).size;
+      progressEl.textContent = `${placed.length} trait${placed.length === 1 ? '' : 's'} placed · ${filled} of 6 areas filled`;
+    }
+
+    function connectDropTarget(element, target) {
+      element.addEventListener('dragover', (event) => {
+        event.preventDefault();
+        event.dataTransfer.dropEffect = 'move';
+        element.classList.add('is-over');
+      });
+      element.addEventListener('dragleave', event => {
+        if (!element.contains(event.relatedTarget)) element.classList.remove('is-over');
+      });
+      element.addEventListener('drop', (event) => {
+        event.preventDefault();
+        element.classList.remove('is-over');
+        const id = event.dataTransfer.getData('text/plain') || draggingId;
+        moveCard(id, target);
+      });
+      element.addEventListener('click', (event) => {
+        if (event.target.closest('.trait')) return;
+        if (selectedId) moveCard(selectedId, target);
+      });
+      element.addEventListener('keydown', (event) => {
+        if (selectedId && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault();
+          moveCard(selectedId, target);
+        }
+      });
+    }
+
+    CATEGORIES.forEach(cat => connectDropTarget(document.getElementById('zone-' + cat), cat));
+    connectDropTarget(bankArea, 'bank');
+    document.getElementById('reset').addEventListener('click', () => {
+      if (!confirm('Clear the leader and return all traits to the word bank?')) return;
+      Object.keys(state).forEach(id => { state[id] = 'bank'; });
+      selectedId = null;
+      save();
+      render();
+      statusEl.textContent = 'Board cleared. Ready for another class round!';
+    });
+    document.getElementById('fullscreen').addEventListener('click', async () => {
+      try {
+        if (document.fullscreenElement) await document.exitFullscreen();
+        else await document.documentElement.requestFullscreen();
+      } catch (error) {
+        statusEl.textContent = 'Fullscreen was blocked. You can also press F11 in your browser.';
+      }
+    });
+    document.addEventListener('fullscreenchange', () => {
+      document.getElementById('fullscreen').textContent = document.fullscreenElement ? 'Exit full screen' : 'Full screen';
+    });
+    render();
+  </script>
+</body>
+</html>
